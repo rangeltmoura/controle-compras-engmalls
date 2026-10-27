@@ -9,7 +9,7 @@
 
 ## Ativação coordenada
 
-O código foi preparado localmente. O banco de produção e a publicação da Vercel ainda não foram alterados. A conexão disponível é com o Supabase; não há acesso de implantação à Vercel nesta conversa.
+Ativação concluída em 26/10/2026 no projeto Supabase `kcgwbuedetqlxhyomoih` e em https://controle-compras-engmalls.vercel.app/. A atualização foi integrada pela PR #1. A migração foi aplicada em duas etapas coordenadas: `solicitacoes_infraestrutura` e `solicitacoes_ativacao_acesso`. Não executar novamente o SQL de instalação neste projeto. Os passos abaixo documentam o procedimento para instalação em outro ambiente.
 
 1. Preparar uma implantação de prévia na Vercel com `index.html` e `assets/` na raiz. Não há build, framework ou nova dependência de produção.
 2. Programar uma breve janela de manutenção. A migração restringe a leitura da tabela de usuários: a versão antiga, que consultava PIN diretamente, deixará de autenticar após a aplicação.
@@ -53,4 +53,7 @@ As regras antigas dos demais módulos não foram reescritas. A inspeção identi
 - Sintaxe dos blocos JavaScript do HTML e do novo módulo verificada com o parser do Node.js.
 - Conferência manual no navegador com dados fictícios: perfil comum sem acompanhamento, comprador com acompanhamento, administrador com navegação ERP, produtos múltiplos, prazo condicional, bloqueio de campos vazios, confirmação de protocolo, mudança de status e atualização dos cards, detalhe dos produtos e alternância visual da ordenação. Essas verificações não substituem a validação das consultas e políticas no banco real.
 - Não foram criados testes automatizados nem adicionadas bibliotecas de produção.
-- A migração ainda precisa de execução e verificação no ambiente de implantação; não houve teste de concorrência real no banco.
+- Migração aplicada no banco de produção; verificações transacionais com rollback confirmaram formato do protocolo, idempotência, produtos gravados juntos, restrição de leitura para usuário comum, leitura e alteração de status para comprador e bloqueio de alteração de campos protegidos.
+- Após a ativação, acesso sem sessão não leu pedidos, não pôde consultar PIN nem criar administrador. Login, consulta da sessão e logout foram verificados dentro de transação revertida, sem persistir sessões de verificação.
+- Produção verificada no navegador: novo formulário e módulo JavaScript carregados, sem erros de aplicação registrados. Não foi executado teste de concorrência real.
+- Advisors: sem alertas de erro ou aviso na consulta. Há informes de RLS sem políticas nas tabelas privadas (bloqueio intencional de acesso direto) e no extrato bancário preexistente. Referência: https://supabase.com/docs/guides/database/database-linter?lint=0008_rls_enabled_no_policy
