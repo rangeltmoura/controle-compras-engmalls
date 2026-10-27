@@ -149,6 +149,7 @@
   }
   .botoes-pin button.primario { flex: 1.4; padding: 13px; }
 </style>
+<link rel="stylesheet" href="assets/solicitacoes.css">
 </head>
 <body>
 
@@ -237,6 +238,24 @@
       <button class="link" id="btn-sair-comum">Sair</button>
     </div>
 
+    <nav class="sol-nav" aria-label="Compras">
+      <button type="button" data-sol-tela="nova">Solicitação de compra</button>
+      <button type="button" data-sol-tela="lancamento">Registrar compra</button>
+      <button type="button" data-sol-tela="acomp" id="sol-nav-acomp" class="oculto">Acompanhamento</button>
+    </nav>
+    <section id="sol-form-secao" class="bloco-lancamento oculto">
+      <h2>Solicitação de compra</h2>
+      <p class="sol-ajuda">Todos os campos são obrigatórios. Uma única obra vale para todos os produtos.</p>
+      <form id="sol-form">
+        <div id="sol-produtos"></div>
+        <button type="button" class="sol-button" id="sol-adicionar">+ Adicionar produto</button>
+        <label class="sol-obra-label" for="sol-obra">Obra de destino</label>
+        <select id="sol-obra" required><option value="">Selecione...</option></select>
+        <button id="sol-enviar" class="primario" type="submit" style="margin-top:24px">Enviar solicitação</button>
+      </form>
+      <p id="sol-msg" class="msg" role="status" tabindex="-1"></p>
+    </section>
+    <section id="sol-acomp-comum" class="bloco-lancamento oculto"><h2>Acompanhamento de solicitações</h2></section>
     <div class="bloco-lancamento" id="bloco-lancamento-comum">
       <p class="campo-data-atual"></p>
       <form class="form-compra">
@@ -443,6 +462,7 @@
     </div>
     <button type="button" class="nav-item ativa" data-pagina="lancamento">Lançamento</button>
     <button type="button" class="nav-item" data-pagina="conferencia">Conferência</button>
+    <button type="button" class="nav-item" data-pagina="solicitacoes">Solicitações</button>
     <button type="button" class="nav-item" data-pagina="cadastros">Cadastros</button>
     <div class="erp-sidebar-rodape">
       <span class="nome-usuario-erp" id="erp-nome-usuario"></span>
@@ -452,6 +472,7 @@
 
   <main class="erp-conteudo">
 
+    <div class="erp-pagina oculto" id="pagina-solicitacoes"><h2>Acompanhamento de solicitações</h2></div>
     <div class="erp-pagina" id="pagina-lancamento">
       <div class="cabecalho-pagina"><h1>Lançamento de compra</h1></div>
       <div class="bloco-lancamento" id="bloco-lancamento-erp">
@@ -560,7 +581,14 @@
 // =========================================================
 const SUPABASE_URL = 'https://kcgwbuedetqlxhyomoih.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImtjZ3didWVkZXRxbHhoeW9tb2loIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTA0MzIzNzAsImV4cCI6MjEwNjAwODM3MH0.RzJbjpx_yTXpo771XIDuo_Tl9MGr7QCSI5Z9v93esz8';
-const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+  global: { fetch: (url, options = {}) => {
+    const headers = new Headers(options.headers);
+    const token = sessionStorage.getItem('eng-token');
+    if (token) headers.set('x-eng-session', token);
+    return fetch(url, { ...options, headers });
+  }}
+});
 
 let engenheiroAtual = null; // { id, nome, is_master }
 
@@ -650,25 +678,22 @@ async function tentarEntrar() {
   btnEntrar.disabled = true;
   btnEntrar.textContent = 'Entrando...';
 
-  const { data, error } = await sb
-    .from('engenheiros')
-    .select('id, nome, is_master')
-    .eq('pin', pinDigitado)
-    .eq('ativo', true)
-    .maybeSingle();
-
-  btnEntrar.disabled = false;
-  btnEntrar.textContent = 'Entrar';
-
-  if (error || !data) {
-    erro.textContent = 'PIN incorreto.';
-    erro.classList.remove('oculto');
+  try {
+    const { data, error } = await sb.rpc('eng_login', { p_pin: pinDigitado });
+    if (error || !data?.usuario) throw new Error(data?.erro || error?.message || 'PIN incorreto.');
+    sessionStorage.setItem('eng-token', data.token);
+    engenheiroAtual = data.usuario;
     pinDigitado = ''; revelarUltimo = false; renderPin();
+  } catch (falha) {
+    pinDigitado = ''; revelarUltimo = false; renderPin();
+    erro.textContent = falha.message || 'Falha de conexão. Tente novamente.';
+    erro.classList.remove('oculto');
     return;
+  } finally {
+    btnEntrar.disabled = false;
+    btnEntrar.textContent = 'Entrar';
   }
 
-  engenheiroAtual = data;
-  sessionStorage.setItem('engenheiro', JSON.stringify(data));
   entrarNoSistema();
 }
 
@@ -688,9 +713,13 @@ function entrarNoSistema() {
     document.getElementById('nome-usuario-comum').textContent = engenheiroAtual.nome;
     controladorComum.inicializar();
   }
+  Solicitacoes.entrar();
 }
 
-function sair() {
+async function sair() {
+  Solicitacoes.sair();
+  try { await sb.rpc('eng_logout'); } catch (_) { /* Limpa a sessão local mesmo sem rede. */ }
+  sessionStorage.removeItem('eng-token');
   sessionStorage.removeItem('engenheiro');
   engenheiroAtual = null;
   pinDigitado = '';
@@ -855,6 +884,8 @@ async function irParaPaginaErp(pagina) {
   } else if (pagina === 'conferencia') {
     document.querySelectorAll('.alterna-vista button').forEach(b => b.classList.toggle('ativa', b.dataset.vista === 'pendentes'));
     abrirConferencia('pendentes');
+  } else if (pagina === 'solicitacoes') {
+    Solicitacoes.carregar();
   } else if (pagina === 'cadastros') {
     abrirAba(ABAS_ADMIN[0].chave);
   }
@@ -893,7 +924,7 @@ async function abrirAba(chave) {
   const camposForm = config.campos.map(c =>
     `<input type="text" class="novo-campo" data-key="${c.key}" placeholder="${c.label}" />`).join('');
   const masterCheckbox = config.master
-    ? `<label class="check"><input type="checkbox" id="novo-is-master" /> Master</label>` : '';
+    ? `<label class="check"><input type="checkbox" id="novo-is-master" /> Administrador</label><label class="check"><input type="checkbox" id="novo-is-comprador" /> Comprador</label>` : '';
 
   secao.innerHTML = `
     <form class="form-add-admin" id="form-add-admin">
@@ -914,7 +945,11 @@ async function abrirAba(chave) {
     });
     const msg = document.getElementById('admin-msg');
     if (!registro.nome) { msg.textContent = 'Preencha o nome.'; msg.className = 'msg erro'; return; }
-    if (config.master) registro.is_master = document.getElementById('novo-is-master').checked;
+    if (config.master) {
+      if (!/^[0-9]{1,6}$/.test(registro.pin || '')) { msg.textContent = 'Informe um PIN de 1 a 6 dígitos.'; msg.className = 'msg erro'; return; }
+      registro.is_master = document.getElementById('novo-is-master').checked;
+      registro.is_comprador = document.getElementById('novo-is-comprador').checked;
+    }
 
     const { error } = await sb.from(config.tabela).insert(registro);
     if (error) { msg.textContent = 'Erro ao adicionar: ' + error.message; msg.className = 'msg erro'; return; }
@@ -928,15 +963,15 @@ async function abrirAba(chave) {
 
 async function carregarListaAdmin(config) {
   const lista = document.getElementById('lista-admin');
-  const { data, error } = await sb.from(config.tabela).select('*').order('ativo', { ascending: false }).order('nome');
+  const { data, error } = await sb.from(config.tabela).select(config.master ? 'id,nome,ativo,is_master,is_comprador' : '*').order('ativo', { ascending: false }).order('nome');
   if (error || !data) { lista.innerHTML = '<p class="msg erro">Erro ao carregar a lista.</p>'; return; }
 
   lista.innerHTML = data.map(item => {
     const inputs = config.campos.map(c =>
-      `<input type="text" class="${c.key === 'pin' ? 'campo-pin' : ''}" data-key="${c.key}" value="${item[c.key] ?? ''}" />`
+      `<input type="text" class="${c.key === 'pin' ? 'campo-pin' : ''}" data-key="${c.key}" placeholder="${c.key === 'pin' ? 'Novo PIN (opcional)' : c.label}" value="${item[c.key] ?? ''}" />`
     ).join('');
     const masterCheck = config.master
-      ? `<label class="check-master"><input type="checkbox" class="check-is-master" ${item.is_master ? 'checked' : ''}/> master</label>` : '';
+      ? `<label class="check-master"><input type="checkbox" class="check-is-master" ${item.is_master ? 'checked' : ''}/> administrador</label><label class="check-master"><input type="checkbox" class="check-is-comprador" ${item.is_comprador ? 'checked' : ''}/> comprador</label>` : '';
     return `
       <div class="item-admin ${item.ativo ? '' : 'inativo'}" data-id="${item.id}">
         ${inputs}
@@ -954,8 +989,12 @@ async function carregarListaAdmin(config) {
 
 async function salvarItemAdmin(linha, config) {
   const atualizacao = {};
-  linha.querySelectorAll('input[data-key]').forEach(input => { atualizacao[input.dataset.key] = input.value.trim(); });
-  if (config.master) atualizacao.is_master = linha.querySelector('.check-is-master').checked;
+  linha.querySelectorAll('input[data-key]').forEach(input => {
+    if (input.dataset.key === 'pin' && !input.value.trim()) return;
+    atualizacao[input.dataset.key] = input.value.trim();
+  });
+  if (atualizacao.pin && !/^[0-9]{1,6}$/.test(atualizacao.pin)) { alert('Informe um PIN de 1 a 6 dígitos.'); return; }
+  if (config.master) { atualizacao.is_master = linha.querySelector('.check-is-master').checked; atualizacao.is_comprador = linha.querySelector('.check-is-comprador').checked; }
   const { error } = await sb.from(config.tabela).update(atualizacao).eq('id', linha.dataset.id);
   if (error) alert('Erro ao salvar: ' + error.message);
   else carregarListaAdmin(config);
@@ -1218,11 +1257,42 @@ document.getElementById('modal-compra').addEventListener('click', (e) => {
 // =========================================================
 // RETOMAR SESSÃO
 // =========================================================
-const salvo = sessionStorage.getItem('engenheiro');
-if (salvo) {
-  engenheiroAtual = JSON.parse(salvo);
-  entrarNoSistema();
-}
 </script>
+
+<section id="sol-acomp" class="oculto">
+  <div id="sol-cards" class="sol-cards" aria-label="Resumo de todas as solicitações"></div>
+  <p class="sol-ajuda">Os cards consideram todas as solicitações. Os filtros abaixo se aplicam à tabela.</p>
+  <form id="sol-filtros" class="sol-filtros">
+    <label>Status<select id="sol-filtro-status"><option value="">Todos</option><option>aguardando</option><option>em cotação</option><option>aprovado</option><option>cancelado</option></select></label>
+    <label>Protocolo<input id="sol-filtro-protocolo" type="text" inputmode="numeric" maxlength="6" pattern="[0-9]{1,6}" title="Informe até 6 dígitos" placeholder="Ex.: 261001"></label>
+    <button type="submit" class="sol-button">Filtrar / Atualizar</button>
+  </form>
+  <p class="msg" id="sol-lista-msg" role="status"></p>
+  <div class="sol-tabela-wrap"><table class="sol-tabela"><caption class="sol-ajuda">Solicitações de compra — abra o protocolo para ver os produtos</caption>
+    <thead><tr>
+      <th scope="col"><button type="button" data-sol-ordem="protocolo">Protocolo<span></span></button></th>
+      <th scope="col"><button type="button" data-sol-ordem="criado_em">Data<span></span></button></th>
+      <th scope="col"><button type="button" data-sol-ordem="engenheiros(nome)">Solicitante<span></span></button></th>
+      <th scope="col"><button type="button" data-sol-ordem="obras(nome)">Obra<span></span></button></th>
+      <th scope="col"><button type="button" data-sol-ordem="status">Status<span></span></button></th>
+    </tr></thead><tbody id="sol-linhas"></tbody>
+  </table></div>
+  <div class="sol-paginacao"><button type="button" id="sol-anterior" class="sol-button">Anterior</button><span id="sol-pagina" role="status"></span><button type="button" id="sol-proxima" class="sol-button">Próxima</button></div>
+</section>
+<script src="assets/solicitacoes.js"></script>
+<script>
+// Dados de perfil no navegador não autenticam: o banco valida o token opaco.
+sessionStorage.removeItem('engenheiro');
+(async () => {
+  if (!sessionStorage.getItem('eng-token')) return;
+  try {
+    const { data, error } = await sb.rpc('eng_sessao');
+    if (error || !data) throw new Error('Sessão expirada');
+    engenheiroAtual = data;
+    entrarNoSistema();
+  } catch (_) { sessionStorage.removeItem('eng-token'); }
+})();
+</script>
+
 </body>
 </html>
