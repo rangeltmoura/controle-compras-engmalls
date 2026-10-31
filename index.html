@@ -1199,6 +1199,17 @@ function abrirModalCompra(id) {
         <label>Descrição</label>
         <textarea class="modal-campo-descricao" style="min-height:60px;" ${somenteLeitura ? 'disabled' : ''}>${c.descricao ?? ''}</textarea>
       </div>
+      <div class="campo-full">
+        <label>Nota fiscal anexada</label>
+        ${c.foto_nota_fiscal_url
+          ? `<button type="button" class="sol-button" id="modal-ver-nota">Ver nota fiscal</button>
+             <p class="msg" id="modal-nota-msg" role="status"></p>
+             <div id="modal-nota-preview" class="oculto">
+               <a id="modal-nota-link" target="_blank" rel="noopener noreferrer">Abrir imagem em nova aba</a>
+               <img id="modal-nota-imagem" alt="Nota fiscal anexada a esta compra" style="display:block;max-width:100%;max-height:480px;object-fit:contain;margin-top:12px;border:1px solid var(--line);border-radius:4px;" />
+             </div>`
+          : '<p class="sol-ajuda">Nenhuma imagem anexada a esta compra.</p>'}
+      </div>
     </div>
     <div class="rodape-cartao">
       <label class="check-conferido">
@@ -1213,6 +1224,51 @@ function abrirModalCompra(id) {
       </div>
     </div>
   `;
+
+  if (c.foto_nota_fiscal_url) {
+    const btnNota = corpo.querySelector('#modal-ver-nota');
+    const msgNota = corpo.querySelector('#modal-nota-msg');
+    const previewNota = corpo.querySelector('#modal-nota-preview');
+    const imagemNota = corpo.querySelector('#modal-nota-imagem');
+    const linkNota = corpo.querySelector('#modal-nota-link');
+    imagemNota.addEventListener('error', () => {
+      previewNota.classList.add('oculto');
+      msgNota.textContent = 'Não foi possível exibir a imagem. Clique em Ver nota fiscal para tentar novamente.';
+      msgNota.className = 'msg erro';
+    });
+    btnNota.addEventListener('click', async () => {
+      btnNota.disabled = true;
+      btnNota.textContent = 'Carregando imagem...';
+      msgNota.textContent = '';
+      previewNota.classList.add('oculto');
+      try {
+        const prefixo = 'notas-fiscais/';
+        if (!c.foto_nota_fiscal_url.startsWith(prefixo)) throw new Error('Este anexo usa um formato antigo. Entre em contato com o administrador.');
+        const { data: anexo, error } = await sb.functions.invoke('anexar-nota-fiscal', {
+          body: { action: 'url', path: c.foto_nota_fiscal_url.slice(prefixo.length) }
+        });
+        if (error) {
+          let detalhe = 'Não foi possível abrir a nota fiscal. Tente novamente.';
+          if (error.context?.json) {
+            try { detalhe = (await error.context.json()).error || detalhe; } catch (_) { /* Mantém mensagem em português. */ }
+          }
+          throw new Error(detalhe);
+        }
+        if (!anexo?.url || new URL(anexo.url).origin !== SUPABASE_URL) throw new Error('O acesso à imagem não foi confirmado. Tente novamente.');
+        imagemNota.src = anexo.url;
+        linkNota.href = anexo.url;
+        previewNota.classList.remove('oculto');
+        msgNota.textContent = 'O link da imagem é temporário. Clique em Ver nota fiscal para renovar o acesso quando necessário.';
+        msgNota.className = 'msg';
+      } catch (erro) {
+        msgNota.textContent = erro.message || 'Não foi possível abrir a nota fiscal.';
+        msgNota.className = 'msg erro';
+      } finally {
+        btnNota.disabled = false;
+        btnNota.textContent = 'Ver nota fiscal';
+      }
+    });
+  }
 
   if (!somenteLeitura) {
     aplicarMascaraValor(corpo.querySelector('.modal-campo-valor'), c.valor);
