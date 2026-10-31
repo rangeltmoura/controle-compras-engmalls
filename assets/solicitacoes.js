@@ -10,6 +10,7 @@ const Solicitacoes = (() => {
  function hoje(){const partes=new Intl.DateTimeFormat('en-CA',{timeZone:'America/Sao_Paulo',year:'numeric',month:'2-digit',day:'2-digit'}).formatToParts(new Date());const valor=tipo=>partes.find(p=>p.type===tipo).value;return `${valor('year')}-${valor('month')}-${valor('day')}`;}
  function futuro(){const d=new Date(hoje()+'T12:00:00Z');d.setUTCDate(d.getUTCDate()+1);return d.toISOString().slice(0,10);}
  function data(valor){return valor ? new Intl.DateTimeFormat('pt-BR',{timeZone:'America/Sao_Paulo',dateStyle:'short',timeStyle:'short'}).format(new Date(valor)) : '—';}
+ function dataCurta(valor){return valor ? new Intl.DateTimeFormat('pt-BR',{timeZone:'America/Sao_Paulo',dateStyle:'short'}).format(new Date(valor)) : '—';}
  function mensagem(id,texto,erro=false){el(id).textContent=texto;el(id).className=erro?'msg erro':'msg ok';}
  function produto(){
  const campo=document.createElement('fieldset');campo.className='sol-produto';
@@ -52,19 +53,19 @@ const Solicitacoes = (() => {
  if(!gestor())return;
  const rodada=++versao;mensagem('sol-lista-msg','Carregando...');el('sol-anterior').disabled=true;el('sol-proxima').disabled=true;el('sol-linhas').replaceChildren();
  try{
- let consulta=sb.from('solicitacoes').select('id,protocolo,dia,status,criado_em,atualizado_em,obras(nome),engenheiros(nome),solicitacao_itens(posicao,descricao,quantidade,urgencia,prazo_desejado,prazo_limite)',{count:'exact'});
+ let consulta=sb.from('solicitacoes_acompanhamento').select('item_id,solicitacao_id,protocolo,criado_em,produto,quantidade,obra,solicitante,urgencia,prazo_final,prazo_desejado,status',{count:'exact'});
  const status=el('sol-filtro-status').value,protocolo=el('sol-filtro-protocolo').value.trim();
  if(status)consulta=consulta.eq('status',status);if(protocolo)consulta=consulta.like('protocolo',protocolo+'%');
- const [lista,resumo]=await Promise.all([consulta.order(coluna,{ascending:crescente}).order('id',{ascending:true}).range(pagina*tamanho,(pagina+1)*tamanho-1),sb.rpc('resumo_solicitacoes')]);
+ const [lista,resumo]=await Promise.all([consulta.order(coluna,{ascending:crescente,nullsFirst:false}).order('item_id',{ascending:true}).range(pagina*tamanho,(pagina+1)*tamanho-1),sb.rpc('resumo_solicitacoes')]);
  if(rodada!==versao)return;if(lista.error)throw lista.error;if(resumo.error)throw resumo.error;
  const total=lista.count||0;if(pagina>0&&pagina*tamanho>=total){pagina=Math.max(0,Math.ceil(total/tamanho)-1);return carregar();}
  const todos=(resumo.data||[]).reduce((n,r)=>n+Number(r.quantidade),0);
  el('sol-cards').innerHTML=estados.map(s=>{const qtd=Number(resumo.data.find(r=>r.status===s)?.quantidade||0);return `<article class="sol-card"><span>${esc(s)}</span><strong>${qtd}</strong><span>${(todos?qtd/todos*100:0).toLocaleString('pt-BR',{maximumFractionDigits:1})}% do total</span></article>`;}).join('');
- el('sol-linhas').innerHTML=lista.data.map(s=>`<tr><td>${esc(s.protocolo)}<details class="sol-detalhes"><summary>Ver produtos e prazos</summary><p>Atualizada em ${esc(data(s.atualizado_em))}</p><ol>${s.solicitacao_itens.sort((a,b)=>a.posicao-b.posicao).map(i=>`<li><strong>${esc(i.descricao)}</strong><br>Quantidade: ${esc(Number(i.quantidade).toLocaleString('pt-BR'))} · Urgência: ${esc(i.urgencia)}<br>${i.urgencia==='baixa'?'Após '+esc(i.prazo_desejado.split('-').reverse().join('/')):'Prazo máximo: '+esc(data(i.prazo_limite))}</li>`).join('')}</ol></details></td><td>${esc(data(s.criado_em))}</td><td>${esc(s.engenheiros?.nome||'—')}</td><td>${esc(s.obras?.nome||'—')}</td><td><select aria-label="Status do protocolo ${esc(s.protocolo)}" data-sol-status="${esc(s.id)}">${estados.map(v=>`<option ${v===s.status?'selected':''}>${esc(v)}</option>`).join('')}</select></td></tr>`).join('');
- el('sol-pagina').textContent=`Página ${pagina+1} de ${Math.max(1,Math.ceil(total/tamanho))} · ${total} solicitações`;
+ el('sol-linhas').innerHTML=lista.data.map(s=>`<tr><td class="sol-data" title="${esc(data(s.criado_em))}">${esc(dataCurta(s.criado_em))}</td><td class="sol-descricao-tabela">${esc(s.produto)}</td><td class="sol-numero">${esc(Number(s.quantidade).toLocaleString('pt-BR',{maximumFractionDigits:3}))}</td><td>${esc(s.obra||'—')}</td><td>${esc(s.solicitante||'—')}</td><td>${esc(s.urgencia.charAt(0).toUpperCase()+s.urgencia.slice(1))}</td><td class="sol-data" title="${esc(s.urgencia==='baixa'?'Disponibilidade após a data informada':data(s.prazo_final))}">${s.urgencia==='baixa'?'Após ':''}${esc(s.prazo_desejado?s.prazo_desejado.split('-').reverse().join('/'):dataCurta(s.prazo_final))}</td><td><select aria-label="Status do protocolo ${esc(s.protocolo)}, produto ${esc(s.produto)}" data-sol-status="${esc(s.solicitacao_id)}">${estados.map(v=>`<option ${v===s.status?'selected':''}>${esc(v)}</option>`).join('')}</select></td><td class="sol-data">${esc(s.protocolo)}</td></tr>`).join('');
+ el('sol-pagina').textContent=`Página ${pagina+1} de ${Math.max(1,Math.ceil(total/tamanho))} · ${total} ${total===1?'produto':'produtos'}`;
  el('sol-anterior').disabled=pagina===0;el('sol-proxima').disabled=(pagina+1)*tamanho>=total;
  mensagem('sol-lista-msg',total?'':'Nenhuma solicitação encontrada.');
- document.querySelectorAll('[data-sol-ordem]').forEach(b=>{const ativo=b.dataset.solOrdem===coluna;b.parentElement.setAttribute('aria-sort',ativo?(crescente?'ascending':'descending'):'none');b.querySelector('span').textContent=ativo?(crescente?' ↑':' ↓'):'';});
+ document.querySelectorAll('[data-sol-ordem]').forEach(b=>{const ativo=b.dataset.solOrdem===coluna;b.parentElement.setAttribute('aria-sort',ativo?(crescente?'ascending':'descending'):'none');b.querySelector('span').textContent=ativo?(crescente?' ↑':' ↓'):' ↕';b.title=ativo&&crescente?'Ordenar do maior para o menor / Z–A':'Ordenar do menor para o maior / A–Z';});
  }catch(e){if(rodada===versao)mensagem('sol-lista-msg',e.message||'Não foi possível carregar as solicitações.',true);}
  }
  function iniciar(){
