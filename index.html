@@ -1265,6 +1265,9 @@ document.getElementById('modal-compra').addEventListener('click', (e) => {
   <form id="sol-filtros" class="sol-filtros">
     <label>Status<select id="sol-filtro-status"><option value="">Todos</option><option>aguardando</option><option>em cotação</option><option>aprovado</option><option>cancelado</option></select></label>
     <label>Protocolo<input id="sol-filtro-protocolo" type="text" inputmode="numeric" maxlength="6" pattern="[0-9]{1,6}" title="Informe até 6 dígitos" placeholder="Ex.: 261001"></label>
+    <label>Obra<select id="sol-filtro-obra"><option value="">Todas</option></select></label>
+    <label>Grau de urgência<select id="sol-filtro-urgencia"><option value="">Todos</option><option value="alta">Alta</option><option value="média">Média</option><option value="baixa">Baixa</option></select></label>
+    <label>Solicitante<select id="sol-filtro-solicitante"><option value="">Todos</option></select></label>
     <button type="submit" class="sol-button">Filtrar / Atualizar</button>
   </form>
   <p class="msg" id="sol-lista-msg" role="status"></p>
