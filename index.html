@@ -1268,13 +1268,17 @@ document.getElementById('modal-compra').addEventListener('click', (e) => {
     <button type="submit" class="sol-button">Filtrar / Atualizar</button>
   </form>
   <p class="msg" id="sol-lista-msg" role="status"></p>
-  <div class="sol-tabela-wrap"><table class="sol-tabela"><caption class="sol-ajuda">Solicitações de compra — abra o protocolo para ver os produtos</caption>
+  <div class="sol-tabela-wrap"><table class="sol-tabela"><caption class="sol-ajuda">Uma linha por produto. Clique no cabeçalho para ordenar A–Z / Z–A. O status vale para todos os produtos do mesmo protocolo.</caption>
     <thead><tr>
-      <th scope="col"><button type="button" data-sol-ordem="protocolo">Protocolo<span></span></button></th>
-      <th scope="col"><button type="button" data-sol-ordem="criado_em">Data<span></span></button></th>
-      <th scope="col"><button type="button" data-sol-ordem="engenheiros(nome)">Solicitante<span></span></button></th>
-      <th scope="col"><button type="button" data-sol-ordem="obras(nome)">Obra<span></span></button></th>
-      <th scope="col"><button type="button" data-sol-ordem="status">Status<span></span></button></th>
+      <th scope="col"><button type="button" data-sol-ordem="criado_em">Data Solicitação<span> ↕</span></button></th>
+      <th scope="col"><button type="button" data-sol-ordem="produto">Produto<span> ↕</span></button></th>
+      <th scope="col"><button type="button" data-sol-ordem="quantidade">Quantidade<span> ↕</span></button></th>
+      <th scope="col"><button type="button" data-sol-ordem="obra">Obra<span> ↕</span></button></th>
+      <th scope="col"><button type="button" data-sol-ordem="solicitante">Solicitante<span> ↕</span></button></th>
+      <th scope="col"><button type="button" data-sol-ordem="urgencia">Grau Urgência<span> ↕</span></button></th>
+      <th scope="col"><button type="button" data-sol-ordem="prazo_final">Prazo Final<span> ↕</span></button></th>
+      <th scope="col"><button type="button" data-sol-ordem="status">Status<span> ↕</span></button></th>
+      <th scope="col"><button type="button" data-sol-ordem="protocolo">Protocolo<span> ↕</span></button></th>
     </tr></thead><tbody id="sol-linhas"></tbody>
   </table></div>
   <div class="sol-paginacao"><button type="button" id="sol-anterior" class="sol-button">Anterior</button><span id="sol-pagina" role="status"></span><button type="button" id="sol-proxima" class="sol-button">Próxima</button></div>
