@@ -2,5 +2,7 @@
 
 .sol-detalhes{overflow-wrap:anywhere}.sol-tabela td{min-width:100px}
 
-.sol-tabela{min-width:1180px;font-size:14px}.sol-tabela th{background:var(--navy)}.sol-tabela th button{color:white;font-weight:600;padding:5px 0}.sol-tabela tbody tr:nth-child(even){background:#f8f7f3}.sol-tabela tbody tr:hover{background:#f3eee2}.sol-tabela td{min-width:0}.sol-tabela .sol-data{white-space:nowrap;font-variant-numeric:tabular-nums}.sol-tabela .sol-numero{text-align:right;font-variant-numeric:tabular-nums}.sol-descricao-tabela{min-width:180px;max-width:360px;overflow-wrap:anywhere}
+.sol-tabela{min-width:1180px;font-size:14px}.sol-tabela th{background:var(--navy)}.sol-tabela th button{color:white;font-weight:600;padding:5px 0}.sol-tabela tbody tr:nth-child(even){background:#f8f7f3}.sol-tabela tbody tr:hover{background:#f3eee2}.sol-tabela td{min-width:0}.sol-tabela .sol-data{white-space:nowrap;font-variant-numeric:tabular-nums}.sol-tabela .sol-numero{text-align:center;font-variant-numeric:tabular-nums}.sol-descricao-tabela{min-width:180px;max-width:360px;overflow-wrap:anywhere}
 #app-comum-conteudo:has(#sol-acomp-comum:not(.oculto)){max-width:1600px}
+
+.sol-tabela td{padding:8px 12px;vertical-align:middle}.sol-tabela select{height:32px;min-height:32px;padding:4px 8px;font-size:14px;line-height:1.25;box-sizing:border-box}.sol-tabela td:not(:last-child){border-right:1px solid #e4e4e4}.sol-tabela th:not(:last-child){border-right:1px solid rgba(228,228,228,.3)}
