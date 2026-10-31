@@ -291,6 +291,7 @@
         <div class="field">
           <label>Foto da nota fiscal (opcional)</label>
           <input type="file" class="campo-foto" accept="image/*" capture="environment" />
+          <small class="sol-ajuda">Imagem de até 10 MB. PNG, JPG, WEBP, GIF, AVIF ou HEIC.</small>
         </div>
         <button type="submit" class="primario botao-salvar-lancamento">Registrar compra</button>
         <p class="msg oculto mensagem-lancamento"></p>
@@ -510,6 +511,7 @@
           <div class="field">
             <label>Foto da nota fiscal (opcional)</label>
             <input type="file" class="campo-foto" accept="image/*" capture="environment" />
+            <small class="sol-ajuda">Imagem de até 10 MB. PNG, JPG, WEBP, GIF, AVIF ou HEIC.</small>
           </div>
           <button type="submit" class="primario botao-salvar-lancamento">Registrar compra</button>
           <p class="msg oculto mensagem-lancamento"></p>
@@ -813,11 +815,19 @@ function criarControladorLancamento(container) {
       let fotoUrl = null;
       const arquivo = inputFoto.files[0];
       if (arquivo) {
-        const nomeArquivo = `${engenheiroAtual.id}_${Date.now()}_${arquivo.name}`;
-        const { error: eu } = await sb.storage.from('notas-fiscais').upload(nomeArquivo, arquivo);
-        if (eu) throw eu;
-        const { data: pub } = sb.storage.from('notas-fiscais').getPublicUrl(nomeArquivo);
-        fotoUrl = pub.publicUrl;
+        if (arquivo.size > 10 * 1024 * 1024) throw new Error('A imagem deve ter no máximo 10 MB.');
+        const anexo = new FormData();
+        anexo.append('arquivo', arquivo);
+        const { data: envio, error: erroEnvio } = await sb.functions.invoke('anexar-nota-fiscal', { body: anexo });
+        if (erroEnvio) {
+          let detalhe = 'Não foi possível enviar a imagem. Tente novamente.';
+          if (erroEnvio.context?.json) {
+            try { detalhe = (await erroEnvio.context.json()).error || detalhe; } catch (_) { /* Mantém mensagem em português. */ }
+          }
+          throw new Error(detalhe);
+        }
+        if (!envio?.path) throw new Error('O envio da imagem não foi confirmado. Tente novamente.');
+        fotoUrl = envio.path;
       }
 
       const registro = {
