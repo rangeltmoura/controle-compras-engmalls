@@ -7,7 +7,7 @@ const Solicitacoes = (() => {
  let pagina=0, coluna='criado_em', crescente=false, versao=0, chave=crypto.randomUUID();
  const tamanho=15;
  let filtrosProntos=false;
- const gestor=()=>Boolean(engenheiroAtual && (engenheiroAtual.is_master || engenheiroAtual.is_comprador));
+ const gestor=()=>Acessos.pode('acompanhar');
  function hoje(){const partes=new Intl.DateTimeFormat('en-CA',{timeZone:'America/Sao_Paulo',year:'numeric',month:'2-digit',day:'2-digit'}).formatToParts(new Date());const valor=tipo=>partes.find(p=>p.type===tipo).value;return `${valor('year')}-${valor('month')}-${valor('day')}`;}
  function futuro(){const d=new Date(hoje()+'T12:00:00Z');d.setUTCDate(d.getUTCDate()+1);return d.toISOString().slice(0,10);}
  function data(valor){return valor ? new Intl.DateTimeFormat('pt-BR',{timeZone:'America/Sao_Paulo',dateStyle:'short',timeStyle:'short'}).format(new Date(valor)) : '—';}
@@ -47,8 +47,8 @@ const Solicitacoes = (() => {
  function entrar(){
  el('sol-acomp').classList.toggle('oculto',!gestor());
  el('sol-nav-acomp').classList.toggle('oculto',!gestor());
- if(engenheiroAtual.is_master){el('pagina-solicitacoes').append(el('sol-acomp'));}
- else{el('sol-acomp-comum').append(el('sol-acomp'));comum('nova');}
+ el('pagina-solicitacoes').append(el('sol-acomp'));
+ el('sol-form-secao').classList.remove('oculto');
  }
  async function carregarFiltros(rodada){
  if(filtrosProntos)return;
@@ -81,7 +81,7 @@ const Solicitacoes = (() => {
  const total=lista.count||0;if(pagina>0&&pagina*tamanho>=total){pagina=Math.max(0,Math.ceil(total/tamanho)-1);return carregar();}
  const todos=(resumo.data||[]).reduce((n,r)=>n+Number(r.quantidade),0);
  el('sol-cards').innerHTML=estados.map(s=>{const qtd=Number(resumo.data.find(r=>r.status===s)?.quantidade||0);return `<article class="sol-card"><span>${esc(s)}</span><strong>${qtd}</strong><span>${(todos?qtd/todos*100:0).toLocaleString('pt-BR',{maximumFractionDigits:1})}% do total</span></article>`;}).join('');
- el('sol-linhas').innerHTML=lista.data.map(s=>`<tr><td class="sol-data" title="${esc(data(s.criado_em))}">${esc(dataCurta(s.criado_em))}</td><td class="sol-descricao-tabela">${esc(s.produto)}</td><td class="sol-numero">${esc(Number(s.quantidade).toLocaleString('pt-BR',{maximumFractionDigits:3}))}</td><td>${esc(s.obra||'—')}</td><td>${esc(s.solicitante||'—')}</td><td>${esc(s.urgencia.charAt(0).toUpperCase()+s.urgencia.slice(1))}</td><td class="sol-data" title="${esc(s.urgencia==='baixa'?'Disponibilidade após a data informada':data(s.prazo_final))}">${s.urgencia==='baixa'?'Após ':''}${esc(s.prazo_desejado?s.prazo_desejado.split('-').reverse().join('/'):dataCurta(s.prazo_final))}</td><td><select aria-label="Status do protocolo ${esc(s.protocolo)}, produto ${esc(s.produto)}" data-sol-status="${esc(s.solicitacao_id)}">${estados.map(v=>`<option ${v===s.status?'selected':''}>${esc(v)}</option>`).join('')}</select></td><td class="sol-data">${esc(s.protocolo)}</td></tr>`).join('');
+ el('sol-linhas').innerHTML=lista.data.map(s=>`<tr><td class="sol-data" title="${esc(data(s.criado_em))}">${esc(dataCurta(s.criado_em))}</td><td class="sol-descricao-tabela">${esc(s.produto)}</td><td class="sol-numero">${esc(Number(s.quantidade).toLocaleString('pt-BR',{maximumFractionDigits:3}))}</td><td>${esc(s.obra||'—')}</td><td>${esc(s.solicitante||'—')}</td><td>${esc(s.urgencia.charAt(0).toUpperCase()+s.urgencia.slice(1))}</td><td class="sol-data" title="${esc(s.urgencia==='baixa'?'Disponibilidade após a data informada':data(s.prazo_final))}">${s.urgencia==='baixa'?'Após ':''}${esc(s.prazo_desejado?s.prazo_desejado.split('-').reverse().join('/'):dataCurta(s.prazo_final))}</td><td><select aria-label="Status do protocolo ${esc(s.protocolo)}, produto ${esc(s.produto)}" data-sol-status="${esc(s.solicitacao_id)}" ${Acessos.pode('alterar_status')?'':'disabled'}>${estados.map(v=>`<option ${v===s.status?'selected':''}>${esc(v)}</option>`).join('')}</select></td><td class="sol-data">${esc(s.protocolo)}</td></tr>`).join('');
  el('sol-pagina').textContent=`Página ${pagina+1} de ${Math.max(1,Math.ceil(total/tamanho))} · ${total} ${total===1?'produto':'produtos'}`;
  el('sol-anterior').disabled=pagina===0;el('sol-proxima').disabled=(pagina+1)*tamanho>=total;
  mensagem('sol-lista-msg',total?'':'Nenhuma solicitação encontrada.');
@@ -97,6 +97,6 @@ const Solicitacoes = (() => {
  el('sol-linhas').addEventListener('change',async e=>{const select=e.target.closest('[data-sol-status]');if(!select)return;select.disabled=true;try{const {data:alterados,error}=await sb.from('solicitacoes').update({status:select.value}).eq('id',select.dataset.solStatus).select('id');if(error)throw error;if(!alterados.length)throw new Error('Sem permissão para alterar. Entre novamente.');await carregar();}catch(erro){await carregar();mensagem('sol-lista-msg',erro.message,true);}finally{select.disabled=false;}});
  }
  function sair(){versao++;filtrosProntos=false;el('sol-filtros').reset();el('sol-filtro-obra').innerHTML='<option value="">Todas</option>';el('sol-filtro-solicitante').innerHTML='<option value="">Todos</option>';el('sol-acomp').classList.add('oculto');el('sol-linhas').replaceChildren();el('sol-cards').replaceChildren();el('sol-form').reset();el('sol-produtos').replaceChildren();produto();chave=crypto.randomUUID();mensagem('sol-msg','');mensagem('sol-lista-msg','');}
- return {iniciar,entrar,carregar,sair};
+ return {iniciar,entrar,carregar,sair,obras:()=>obras().catch(e=>mensagem('sol-msg',e.message,true))};
 })();
 Solicitacoes.iniciar();

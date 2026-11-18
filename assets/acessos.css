@@ -1,0 +1,12 @@
+#pagina-acessos { max-width:1100px; }
+.acesso-usuario { background:white; border:1px solid var(--line); border-radius:8px; padding:22px; margin:18px 0; }
+.acesso-cabecalho { display:flex; justify-content:space-between; align-items:center; gap:16px; }
+.acesso-cabecalho h2 { margin:0 0 5px; font-size:20px; }
+.acesso-cabecalho span,.acesso-usuario p { color:var(--ink-soft); font-size:13px; }
+.acesso-opcoes { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:18px; margin-top:22px; }
+.acesso-opcoes label { display:flex; align-items:flex-start; gap:10px; cursor:pointer; margin:0; }
+.acesso-opcoes input { width:18px; height:18px; flex:none; margin:2px 0; accent-color:var(--navy); }
+.acesso-opcoes strong { font-size:14px; display:block; }
+.acesso-opcoes small { display:block; color:var(--ink-soft); font-size:12px; margin-top:4px; line-height:1.5; }
+.acesso-resultado:empty { display:none; }
+@media(max-width:650px) { .acesso-opcoes { grid-template-columns:1fr; } .acesso-usuario { padding:16px; } .acesso-cabecalho { align-items:flex-start; flex-wrap:wrap; } }
