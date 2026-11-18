@@ -1,0 +1,24 @@
+#tela-login { position:relative; isolation:isolate; overflow:hidden; background:#efede7; }
+.login-fundo { position:absolute; inset:0; z-index:-1; overflow:hidden; pointer-events:none; opacity:.22; }
+.login-fundo img {
+  position:absolute; inset:0; width:100%; height:100%; object-fit:contain;
+  opacity:0; animation:login-paisagem 40s linear infinite;
+  will-change:transform,opacity;
+}
+/* Entrada a cada 10s, dissolução de 2,5s; deslocamento mantém ~0,369% por segundo. */
+.login-fundo img:nth-child(1) { animation-delay:-2.5s; }
+.login-fundo img:nth-child(2) { animation-delay:-32.5s; }
+.login-fundo img:nth-child(3) { animation-delay:-22.5s; }
+.login-fundo img:nth-child(4) { animation-delay:-12.5s; }
+@keyframes login-paisagem {
+  0% { opacity:0; transform:translateX(-2.3077%); }
+  6.25% { opacity:1; }
+  25% { opacity:1; }
+  31.25% { opacity:0; transform:translateX(2.3077%); }
+  31.251%,100% { opacity:0; transform:translateX(-2.3077%); }
+}
+#tela-login .login-card { position:relative; background:rgba(255,255,255,.97); border:1px solid rgba(255,255,255,.8); box-shadow:0 14px 50px rgba(20,40,63,.12); }
+@media(prefers-reduced-motion:reduce) {
+  .login-fundo img { animation:none; }
+  .login-fundo img:first-child { opacity:1; transform:none; }
+}

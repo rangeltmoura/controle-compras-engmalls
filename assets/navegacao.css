@@ -1,0 +1,40 @@
+/* Barra superior: a altura reservada impede que o conteúdo fique sob o menu. */
+#app-erp.erp-shell { display:block; min-height:100vh; }
+#app-erp .erp-sidebar {
+  position:fixed; inset:0 0 auto; z-index:100;
+  width:100%; height:calc(76px + env(safe-area-inset-top, 0px));
+  display:grid; grid-template-columns:auto minmax(0,1fr) auto;
+  align-items:center; gap:20px;
+  padding:env(safe-area-inset-top, 0px) 24px 0;
+  box-shadow:0 2px 12px rgba(20,40,63,.16);
+}
+#app-erp .erp-logo { padding:0; margin:0; border:0; }
+#app-erp .erp-menu { display:flex; align-items:stretch; min-width:0; height:100%; overflow-x:auto; }
+#app-erp .nav-item {
+  flex:0 0 auto; width:auto; text-align:center; white-space:nowrap;
+  padding:0 13px; border-left:0; border-bottom:3px solid transparent;
+  font-size:13px; min-height:48px;
+}
+#app-erp .nav-item.ativa { border-left:0; border-bottom-color:var(--amber); }
+#app-erp .erp-sidebar-rodape {
+  display:flex; align-items:center; justify-content:flex-end; gap:16px;
+  margin:0; padding:0 0 0 18px; border-top:0;
+  border-left:1px solid rgba(255,255,255,.18); white-space:nowrap;
+}
+#app-erp .erp-sidebar-rodape .nome-usuario-erp { display:inline; margin:0; max-width:180px; overflow:hidden; text-overflow:ellipsis; }
+#app-erp .erp-sidebar-rodape button { padding:10px 0; }
+#app-erp .erp-conteudo { padding:calc(104px + env(safe-area-inset-top, 0px)) 32px 28px; overflow-x:visible; }
+html { scroll-padding-top:144px; }
+@media(max-width:1250px) {
+  #app-erp .erp-sidebar { height:calc(116px + env(safe-area-inset-top, 0px)); grid-template-columns:minmax(0,1fr) auto; grid-template-rows:60px 56px; gap:0 16px; }
+  #app-erp .erp-logo { grid-column:1; grid-row:1; }
+  #app-erp .erp-menu { grid-column:1 / -1; grid-row:2; }
+  #app-erp .erp-sidebar-rodape { grid-column:2; grid-row:1; }
+  #app-erp .erp-conteudo { padding-top:calc(144px + env(safe-area-inset-top, 0px)); }
+}
+@media(max-width:760px) {
+  #app-erp .erp-sidebar { padding-left:16px; padding-right:16px; }
+  #app-erp .erp-sidebar-rodape { gap:12px; padding-left:12px; }
+  #app-erp .erp-sidebar-rodape .nome-usuario-erp { max-width:130px; }
+  #app-erp .erp-conteudo { padding-left:16px; padding-right:16px; }
+}
